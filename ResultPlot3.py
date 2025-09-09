@@ -19,7 +19,9 @@ for i in range(24):
 
     # 计算 R²、RMSE、MAE
     r2 = r2_score(x, y)
-    rmse = mean_squared_error(x, y, squared=False)  # squared=False 表示直接取 RMSE
+    mse = mean_squared_error(x, y)
+    rmse = np.sqrt(mse)
+    # rmse = mean_squared_error(x, y, squared=False)  # squared=False 表示直接取 RMSE
     mae = mean_absolute_error(x, y)
 
     # 创建散点图
