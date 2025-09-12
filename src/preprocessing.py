@@ -18,7 +18,7 @@ def merge_raw_csv(file1_path, file2_path, file_flod, merged_file_path):
                                                               freq='5min')})
     dataset = pd.merge(full_time_range, merged_df, on='datetime', how='left')
     all_weather_data = []
-    files = os.listdir(file_flod)
+    files = [f for f in os.listdir(file_flod) if f.lower().endswith('.csv')]
     for file in files:
         file_path = os.path.join(file_flod, file)
         df = pd.read_csv(file_path)[
