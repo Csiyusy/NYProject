@@ -30,19 +30,32 @@ def run_predict(
     # val_df = df[["datetime", "era5", "gi_1"]]
     test_df1 = df[["FluxDOWN(W/m²)", "gi_1", "datetime", "atemp", "ahumi", "apress", "ws", "wd", "effective_cloud_cover:p", "Zenith", "Azimuth"]]
     test_df2 = df[["FluxDOWN(W/m²)", "era5", "datetime", "temp:C", "humidity:p", "pressure:hPa", "wind_speed:ms", "wind_speed:ms", "effective_cloud_cover:p", "Zenith", "Azimuth"]]
+    time_series = pd.to_datetime(test_df1["datetime"])
     test_df1 = preprocess_time_features(test_df1, time_col='datetime')
     test_df2 = preprocess_time_features(test_df2, time_col='datetime')
     num = len(test_df1)
 
-    slide_step = 288  # 每次滑动的距离
+    first_idx = None
+    for idx in range(0, num - (seq_length + seq_out) * 3):
+        t = time_series.iloc[idx]
+        if t.minute == 0 and t.hour in [0, 6, 12, 18]:
+            first_idx = idx
+            break
+
+    if first_idx is None:
+        raise ValueError("找不到符合 0:00/6:00/12:00/18:00 的起点")
+
+    slide_step = 72  # 每次滑动的距离
     # 预测并导出结果
-    for i in tqdm(range(0, num - (seq_length + seq_out) * 3,slide_step), desc='预测结果导出：'):
+    for i in tqdm(range(first_idx, num - (seq_length + seq_out) * 3,slide_step), desc='预测结果导出：'):
         input_data1 = test_df1.iloc[i:seq_length * 3 + i:3].values
         input_data2 = test_df2.iloc[i + seq_length * 3:i + (seq_length + seq_out) * 3:3].values
         input_data = np.concatenate([input_data1, input_data2], axis=0)
         if np.isnan(input_data).any():
             continue
         out_data = predict_future(model, input_data, scaler_X, scaler_Y, device).reshape(-1)
+        out_data = np.round(out_data,2)
+
         result = val_df.iloc[i + seq_length * 3:i + (seq_length + seq_out) * 3:3]
         result = result.copy()
 
