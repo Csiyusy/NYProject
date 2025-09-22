@@ -48,19 +48,33 @@ def main(mode, seq_opt, file1_path, file2_path, file_flod, scaler_X_path, scaler
     if mode == "train":
         df = pd.read_csv(config["final_path"])
         df['datetime'] = pd.to_datetime(df['datetime'])
-        # 重叠10天的区间
-        overlap_start = pd.Timestamp('2025-08-10')
-        overlap_end = pd.Timestamp('2025-08-20')  # 含14号当天
+        df = df.sort_values('datetime').reset_index(drop=True)
 
-        # 分段
-        train_df = df[df['datetime'] < overlap_start]  # 前段
-        overlap_df = df[(df['datetime'] >= overlap_start) & (df['datetime'] <= overlap_end)]  # 中间10天
-        test_df = df[df['datetime'] > overlap_end]  # 后段
+        TRAIN_DAYS = 30
+        TEST_DAYS = 30
+        start_time = df['datetime'].min()
+        end_time = df['datetime'].max()
 
-        # 训练集=前段+重叠段
-        train_all = pd.concat([train_df, overlap_df], ignore_index=True)
-        # 测试集=重叠段+后段
-        test_all = pd.concat([overlap_df, test_df], ignore_index=True)
+        # 训练集：开始日期 → 开始日期 + TRAIN_DAYS
+        train_end_time = start_time + pd.Timedelta(days=TRAIN_DAYS)
+        train_all = df[df['datetime'] <= train_end_time]
+        # 测试集：结束日期 - TEST_DAYS → 结束日期
+        test_start_time = end_time - pd.Timedelta(days=TEST_DAYS)
+        test_all = df[df['datetime'] >= test_start_time]
+
+        # # 重叠10天的区间
+        # overlap_start = pd.Timestamp('2025-08-10')
+        # overlap_end = pd.Timestamp('2025-08-20')
+        #
+        # # 分段
+        # train_df = df[df['datetime'] < overlap_start]  # 前段
+        # overlap_df = df[(df['datetime'] >= overlap_start) & (df['datetime'] <= overlap_end)]  # 中间10天
+        # test_df = df[df['datetime'] > overlap_end]  # 后段
+        #
+        # # 训练集=前段+重叠段
+        # train_all = pd.concat([train_df, overlap_df], ignore_index=True)
+        # # 测试集=重叠段+后段
+        # test_all = pd.concat([overlap_df, test_df], ignore_index=True)
 
         # 保存结果
         train_all.to_csv("./ProcessResult/ningyang_train.csv", index=False)
