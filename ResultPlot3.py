@@ -7,6 +7,14 @@ import os
 input_flod = './24_time_result/'
 out_flod = './picture/ScatterPlot/'
 os.makedirs(out_flod, exist_ok=True)
+
+# 用于存储每个文件的 RMSE、R²、MAE
+rmse_list = []
+r2_list = []
+mae_list = []
+percentage_list = []
+
+# ======= 生成每个小时的散点图 =======
 for i in range(24):
     df = pd.read_csv(input_flod + 'out' + str(i + 1) + '.csv')
     x = df["gi_1"]
@@ -21,94 +29,53 @@ for i in range(24):
     r2 = r2_score(x, y)
     mse = mean_squared_error(x, y)
     rmse = np.sqrt(mse)
-    # rmse = mean_squared_error(x, y, squared=False)  # squared=False 表示直接取 RMSE
     mae = mean_absolute_error(x, y)
+
+    # 保存指标
+    rmse_list.append(rmse)
+    r2_list.append(r2)
+    mae_list.append(mae)
+    percentage_list.append(percentage_within_bounds)
 
     # 创建散点图
     plt.figure(figsize=(8, 6))
     plt.scatter(x, y, alpha=0.5, label="Data points")
-
-    # 生成 x 值范围
     x_vals = np.linspace(x.min(), x.max(), 100)
-
-    # 绘制 1:1 线
     plt.plot(x_vals, x_vals, 'r', label="1:1 Line")
-
-    # 绘制相对误差区间线 y = 1.2x 和 y = 0.8x
     plt.plot(x_vals, 1.2 * x_vals, 'g--', label="Upper Bound (1.2x)")
     plt.plot(x_vals, 0.8 * x_vals, 'g--', label="Lower Bound (0.8x)")
 
-    # 在图上显示落在误差区间内的占比和指标
+    # 指标文本
     text_x = x.min() + (x.max() - x.min()) * 0.05
     text_y = y.min() + (y.max() - y.min()) * 0.7
-
     plt.text(text_x, text_y, f"Within Bound: {percentage_within_bounds:.2f}%", fontsize=11, color="g")
     plt.text(text_x, text_y - (y.max() - y.min()) * 0.08, f"R²: {r2:.3f}", fontsize=11)
     plt.text(text_x, text_y - (y.max() - y.min()) * 0.16, f"RMSE: {rmse:.3f}", fontsize=11)
     plt.text(text_x, text_y - (y.max() - y.min()) * 0.24, f"MAE: {mae:.3f}", fontsize=11)
 
-    # 添加标签和图例
     plt.xlabel("global_rad:W")
     plt.ylabel("predict")
-    plt.title("LSTM Scatter Plot with 1:1 Line and Relative Error Bounds (80%)")
+    plt.title(f"LSTM Scatter Plot (Hour {i+1})")
     plt.legend()
     plt.grid(True)
 
-    # 保存图像
-    image_path = out_flod + 'out' + str(i + 1) + '.png'
-    plt.savefig(image_path, dpi=300, bbox_inches="tight")
+    plt.savefig(out_flod + f'out{i+1}.png', dpi=300, bbox_inches="tight")
     plt.close()
 
-# 读取所有 CSV 合并
-all_df_list = []
-for i in range(24):
-    df = pd.read_csv(input_flod + f'out{i + 1}.csv')
-    all_df_list.append(df)
+# ======= 绘制 RMSE 曲线/柱状图 =======
+hours = list(range(1, 25))
 
-# 合并后去重，防止重复值影响统计结果
-all_df = pd.concat(all_df_list, ignore_index=True)
+plt.figure(figsize=(10, 6))
+plt.bar(hours, rmse_list, color='skyblue')
+plt.xlabel("Hour")
+plt.ylabel("RMSE")
+plt.title("RMSE per Hour")
+plt.xticks(hours)
+for h, r in zip(hours, rmse_list):
+    plt.text(h, r + 0.01, f"{r:.2f}", ha='center', fontsize=9)  # 显示数值
+plt.grid(axis='y')
 
-if "datetime" in all_df.columns:
-    all_df = all_df.drop_duplicates(subset=["datetime"], keep='first')
-else:
-    all_df = all_df.drop_duplicates()
-
-# 取 era5 和 gi_1
-x_era5 = all_df["gi_1"]
-y_era5 = all_df["era5"]  # 确保 CSV 中有这一列
-
-# 计算指标
-within_bounds_era5 = ((y_era5 >= 0.8 * x_era5) & (y_era5 <= 1.2 * x_era5)).sum()
-percentage_within_bounds_era5 = within_bounds_era5 / len(x_era5) * 100
-
-r2_era5 = r2_score(x_era5, y_era5)
-rmse_era5 = np.sqrt(mean_squared_error(x_era5, y_era5))
-mae_era5 = mean_absolute_error(x_era5, y_era5)
-
-# 绘图
-plt.figure(figsize=(8, 6))
-plt.scatter(x_era5, y_era5, alpha=0.5, label="ERA5")
-
-x_vals_era5 = np.linspace(x_era5.min(), x_era5.max(), 100)
-plt.plot(x_vals_era5, x_vals_era5, 'r', label="1:1 Line")
-plt.plot(x_vals_era5, 1.2 * x_vals_era5, 'g--', label="Upper Bound (1.2x)")
-plt.plot(x_vals_era5, 0.8 * x_vals_era5, 'g--', label="Lower Bound (0.8x)")
-
-text_x_era5 = x_era5.min() + (x_era5.max() - x_era5.min()) * 0.05
-text_y_era5 = y_era5.min() + (y_era5.max() - y_era5.min()) * 0.7
-
-plt.text(text_x_era5, text_y_era5, f"Within Bound: {percentage_within_bounds_era5:.2f}%", fontsize=11, color="g")
-plt.text(text_x_era5, text_y_era5 - (y_era5.max() - y_era5.min()) * 0.08, f"R²: {r2_era5:.3f}", fontsize=11)
-plt.text(text_x_era5, text_y_era5 - (y_era5.max() - y_era5.min()) * 0.16, f"RMSE: {rmse_era5:.3f}", fontsize=11)
-plt.text(text_x_era5, text_y_era5 - (y_era5.max() - y_era5.min()) * 0.24, f"MAE: {mae_era5:.3f}", fontsize=11)
-
-plt.xlabel("global_rad:W (GI_1)")
-plt.ylabel("ERA5")
-plt.title("ERA5 Scatter Plot")
-plt.legend()
-plt.grid(True)
-
-plt.savefig(out_flod + 'ERA5.png', dpi=300, bbox_inches="tight")
+plt.savefig(out_flod + 'RMSE_per_hour.png', dpi=300, bbox_inches="tight")
 plt.close()
 
-print("✅ 所有散点图已保存完毕！")
+print("✅ 散点图和 RMSE 图已保存完毕！")

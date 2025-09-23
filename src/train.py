@@ -39,7 +39,10 @@ def train_lstm_model(
     )
 
     # 模型初始化
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # mac
+    device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+    # Windows
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Seq2Seq(feature_dim, future_steps=seq_out)
 
     if old_model_name and os.path.exists(old_model_name):

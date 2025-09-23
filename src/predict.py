@@ -26,8 +26,10 @@ def run_predict(
 
     # 加载数据
     df = pd.read_csv(test_file)
-    val_df = df[["datetime", "era5","DireRad", "ScaRad", "temp:C", "humidity:p", "pressure:hPa", "wind_speed:ms", "wind_dir:d", "effective_cloud_cover:p"]]
-    # val_df = df[["datetime", "era5", "gi_1"]]
+    # 输出结果版
+    # val_df = df[["datetime", "era5","DireRad", "ScaRad", "temp:C", "humidity:p", "pressure:hPa", "wind_speed:ms", "wind_dir:d", "effective_cloud_cover:p"]]
+    # 画图版
+    val_df = df[["datetime", "era5", "gi_1"]]
     test_df1 = df[["FluxDOWN(W/m²)", "gi_1", "datetime", "atemp", "ahumi", "apress", "ws", "wd", "effective_cloud_cover:p", "Zenith", "Azimuth"]]
     test_df2 = df[["FluxDOWN(W/m²)", "era5", "datetime", "temp:C", "humidity:p", "pressure:hPa", "wind_speed:ms", "wind_speed:ms", "effective_cloud_cover:p", "Zenith", "Azimuth"]]
     time_series = pd.to_datetime(test_df1["datetime"])
@@ -45,7 +47,7 @@ def run_predict(
     if first_idx is None:
         raise ValueError("找不到符合 0:00/6:00/12:00/18:00 的起点")
 
-    slide_step = 72  # 每次滑动的距离
+    slide_step = 1  # 每次滑动的距离 1 = 5min
     # 预测并导出结果
     for i in tqdm(range(first_idx, num - (seq_length + seq_out) * 3,slide_step), desc='预测结果导出：'):
         input_data1 = test_df1.iloc[i:seq_length * 3 + i:3].values
@@ -54,25 +56,28 @@ def run_predict(
         if np.isnan(input_data).any():
             continue
         out_data = predict_future(model, input_data, scaler_X, scaler_Y, device).reshape(-1)
+        # 保留小数点后两位
         out_data = np.round(out_data,2)
 
         result = val_df.iloc[i + seq_length * 3:i + (seq_length + seq_out) * 3:3]
         result = result.copy()
 
-        # result['gi_pre'] = out_data
-        # result.loc[result['era5'] <= 0, 'gi_pre'] = 0
-        # result.to_csv(os.path.join(out_flod, f'output{i}.csv'), index=False)
+        # 画图版
+        result['gi_pre'] = out_data
+        result.loc[result['era5'] <= 0, 'gi_pre'] = 0
+        result.to_csv(os.path.join(out_flod, f'output{i}.csv'), index=False)
 
-        result['era5'] = np.where(result['era5'] > 0, out_data, 0)
-        result = result.rename(columns={
-            'datetime': '时间', 'era5': '订正总辐射（W/m2）', 'DireRad':'直射辐射（W/m2）','ScaRad':'散射辐射（W/m2）','temp:C': '温度（℃）', 'humidity:p': '湿度（%）',
-            'pressure:hPa': '压力（hPa）', 'wind_speed:ms': '2米风速（m/s）', 'wind_dir:d': '2米风向（°）',
-            'effective_cloud_cover:p': '总云量（%）'})
-
-        # 生成有意义的文件名
-        start_time = pd.to_datetime(result.iloc[0]['时间']).strftime("%Y%m%d_%H%M")
-        end_time = pd.to_datetime(result.iloc[-1]['时间']).strftime("%Y%m%d_%H%M")
-        filename = f"{start_time}-{end_time}_pre.csv"
-
-        # 保存
-        result.to_csv(os.path.join(out_flod, filename), index=False)
+        # 输出结果版
+        # result['era5'] = np.where(result['era5'] > 0, out_data, 0)
+        # result = result.rename(columns={
+        #     'datetime': '时间', 'era5': '订正总辐射（W/m2）', 'DireRad':'直射辐射（W/m2）','ScaRad':'散射辐射（W/m2）','temp:C': '温度（℃）', 'humidity:p': '湿度（%）',
+        #     'pressure:hPa': '压力（hPa）', 'wind_speed:ms': '2米风速（m/s）', 'wind_dir:d': '2米风向（°）',
+        #     'effective_cloud_cover:p': '总云量（%）'})
+        #
+        # # 生成有意义的文件名
+        # start_time = pd.to_datetime(result.iloc[0]['时间']).strftime("%Y%m%d_%H%M")
+        # end_time = pd.to_datetime(result.iloc[-1]['时间']).strftime("%Y%m%d_%H%M")
+        # filename = f"{start_time}-{end_time}_pre.csv"
+        #
+        # # 保存
+        # result.to_csv(os.path.join(out_flod, filename), index=False)

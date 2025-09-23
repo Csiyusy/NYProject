@@ -18,9 +18,9 @@ for i in range(24):
         df_month = df[df["month"] == month]
 
         plt.figure(figsize=(12, 6))
-        plt.plot(df_month["datetime"], df_month["era5"], label="era5", linestyle="-", color="blue")
-        plt.plot(df_month["datetime"], df_month["gi_1"], label="global_rad (W)", linestyle="--", color="red")
-        plt.plot(df_month["datetime"], df_month["gi_pre"], label="predict", linestyle="-.", color="green")
+        plt.plot(df_month["datetime"], df_month["era5"], label="EC", linestyle="-", color="blue")
+        plt.plot(df_month["datetime"], df_month["gi_1"], label="obs", linestyle="--", color="red")
+        plt.plot(df_month["datetime"], df_month["gi_pre"], label="prediction", linestyle="-.", color="green")
 
         plt.xlabel("Datetime")
         plt.ylabel("Values")
