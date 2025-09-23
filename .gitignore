@@ -1,0 +1,24 @@
+# 输入文件
+data/
+
+# 结果文件
+ProcessResult/
+result/
+sampled_result/
+24_time_result/
+
+# 模型文件
+model/
+
+# 杂项
+picture/
+scaler/
+1.py
+2.py
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
